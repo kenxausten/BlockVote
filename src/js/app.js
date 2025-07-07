@@ -9,17 +9,22 @@ App = {
   },
 
   initWeb3: function () {
-    // TODO: refactor conditional
-    if (typeof web3 !== 'undefined') {
-      // If a web3 instance is already provided by Meta Mask.
-      App.web3Provider = web3.currentProvider;
-      web3 = new Web3(web3.currentProvider);
+    if (window.ethereum) {
+      App.web3Provider = window.ethereum;
+      try {
+        // Request account access
+        window.ethereum.request({ method: 'eth_requestAccounts' });
+      } catch (error) {
+        // User denied account access...
+        console.error("User denied account access")
+      }
+    } else if (window.web3) {
+      App.web3Provider = window.web3.currentProvider;
     } else {
       // Specify default instance if no web3 instance provided
       App.web3Provider = new Web3.providers.HttpProvider('http://localhost:8545');
-      ethereum.enable();
-      web3 = new Web3(App.web3Provider);
     }
+    web3 = new Web3(App.web3Provider);
     return App.initContract();
   },
 
@@ -54,10 +59,12 @@ App = {
     });
   },
   listenForAccountChange: function () {
-    ethereum.on('accountsChanged', function (accounts) {
-      App.account = accounts[0];
-      App.render();
-    })
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', function (accounts) {
+        App.account = accounts[0];
+        App.render();
+      });
+    }
   },
 
   render: function () {
@@ -76,16 +83,18 @@ App = {
       <small>(Refresh the page if you've migrated to new account)</small>`);
       App.account = account[0];
       $('#bv-address').text(`${App.account}`)
-      document.getElementById("bv-qr-code").innerHTML = "";
-
-      new QRCode(document.getElementById("bv-qr-code"), {
-        text: `${App.account}`,
-        width: 170,
-        height: 170,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-      });
+      var qrCodeElement = document.getElementById("bv-qr-code");
+      if (qrCodeElement) {
+        qrCodeElement.innerHTML = "";
+        new QRCode(qrCodeElement, {
+          text: `${App.account}`,
+          width: 170,
+          height: 170,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
     });
 
     // Load contract data
